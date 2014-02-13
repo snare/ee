@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import subprocess
 import sys
 import blessings
@@ -17,9 +19,11 @@ UNITS_NEW = ['B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB']
 USE_NEW_DUMB_UNITS = False
 SLEEP_DELAY = 0.2
 START_DELAY = 0.01
-TEMPL1 = "{}/{} ({:0.0f}%) transferred in {:0.2f} seconds ({}/sec)"
-TEMPL2 = "{} transferred in {:0.2f} seconds ({}/sec)"
-SIZE_FMT = "{:0.2f}{}"
+TEMPL1 = "{0}/{1} ({2:0.0f}%) transferred in {3:0.2f} seconds ({4}/sec)"
+TEMPL2 = "{0} transferred in {1:0.2f} seconds ({2}/sec)"
+SIZE_FMT = "{0:0.2f}{1}"
+
+PLATFORM = platform.system()
 
 def calc_bs(args):
     # find the bs= arg
@@ -78,7 +82,7 @@ def calc_insize(args, bs):
                 insize = s.st_size
             elif stat.S_ISCHR(s.st_mode) or stat.S_ISBLK(s.st_mode):
                 # character or block device - get its size from diskutil if it knows about it
-                if platform.system() == "Darwin":
+                if PLATFORM == "Darwin":
                     try:
                         plist = subprocess.check_output(["diskutil", "info", "-plist", infile])
                         d = plistlib.readPlist(StringIO.StringIO(plist))
@@ -86,7 +90,7 @@ def calc_insize(args, bs):
                     except subprocess.CalledProcessError:
                         # diskutil returned an error - infile probably doesn't exist. whatever, dd will error.
                         pass
-                elif platform.system() == "Linux":
+                elif PLATFORM == "Linux":
                     # should probably figure out a decent way to do this on linux
                     pass
 
@@ -94,7 +98,6 @@ def calc_insize(args, bs):
 
 def do_dd(args, bs, insize):
     term = blessings.Terminal()
-    # print term.move_down
 
     # start the dd process
     p = subprocess.Popen(['dd'] + args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -104,7 +107,7 @@ def do_dd(args, bs, insize):
     try:
         while p.poll() is None:
             # send the signal to give us some info on stderr
-            sig = signal.SIGINFO if platform.system() == "Darwin" else signal.SIGUSR1
+            sig = signal.SIGINFO if PLATFORM == "Darwin" else signal.SIGUSR1
             p.send_signal(sig)
 
             # read and parse the status info
@@ -112,7 +115,7 @@ def do_dd(args, bs, insize):
             (bytes, sec, rate) = parse_status(bytes_tx)
 
             # print status
-            print term.clear_eol + fmt_line(bytes, sec, rate, insize) + term.move_up
+            print(term.clear_eol + fmt_line(bytes, sec, rate, insize) + term.move_up)
 
             # sleep
             time.sleep(SLEEP_DELAY)
@@ -123,7 +126,7 @@ def do_dd(args, bs, insize):
     # print final status
     (rec_in, rec_out, bytes_tx) = read_status(p.stderr)
     (bytes, sec, rate) = parse_status(bytes_tx)
-    print term.clear_eol + fmt_line(bytes, sec, rate, insize)
+    print(term.clear_eol + fmt_line(bytes, sec, rate, insize))
 
 def read_status(pipe):
     rec_in = pipe.readline().strip()
@@ -134,8 +137,12 @@ def read_status(pipe):
 def parse_status(bytes_tx):
     a = bytes_tx.split()
     bytes = int(a[0])
-    sec = float(a[4])
-    rate = int(a[6][1:])
+    if PLATFORM == 'Darwin':
+        sec = float(a[4])
+        rate = int(a[6][1:])
+    else:
+        sec = float(a[5])
+        rate = float(a[7])*1024
     return (bytes, sec, rate)
 
 def fmt_b(bytes):
