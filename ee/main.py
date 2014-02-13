@@ -11,6 +11,7 @@ import StringIO
 import platform
 import time
 import signal
+import sys
 
 DEFAULT_BS = 512
 BS_UNITS = {'b': 512, 'k': 1024, 'm': 1048576, 'g': 1073741824}
@@ -123,10 +124,14 @@ def do_dd(args, bs, insize):
         # relay the SIGINT to dd
         p.send_signal(signal.SIGINT)
 
-    # print final status
-    (rec_in, rec_out, bytes_tx) = read_status(p.stderr)
-    (bytes, sec, rate) = parse_status(bytes_tx)
-    print(term.clear_eol + fmt_line(bytes, sec, rate, insize))
+    if p.returncode == 0:
+        # print final status
+        (rec_in, rec_out, bytes_tx) = read_status(p.stderr)
+        (bytes, sec, rate) = parse_status(bytes_tx)
+        print(term.clear_eol + fmt_line(bytes, sec, rate, insize))
+    else:
+        # print error output from dd
+        sys.stderr.write(p.stderr.read())
 
 def read_status(pipe):
     rec_in = pipe.readline().strip()
