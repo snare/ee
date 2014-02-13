@@ -3,6 +3,15 @@ ee
 
 A wrapper for `dd`.
 
+Installation
+------------
+
+    $ pip install ee
+
+Or download the source and:
+
+    $ python setup.py install
+
 Usage
 -----
 
