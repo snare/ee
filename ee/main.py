@@ -147,7 +147,7 @@ def parse_status(bytes_tx):
         rate = int(a[6][1:])
     else:
         sec = float(a[5])
-        rate = float(a[7])*1024
+        rate = float(a[7])*pow(1024, UNITS_OLD.index(a[8][:-2].upper()))
     return (bytes, sec, rate)
 
 def fmt_b(bytes):
