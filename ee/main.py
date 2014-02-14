@@ -147,9 +147,9 @@ def do_dd(args, bs, insize):
 
 def read_status(pipe):
     data = pipe.read()
-    lines = filter(lambda x: 'bytes' in x, data.splitlines())
+    lines = filter(lambda x: re.match("^\d+ bytes", x), data.splitlines())
     if len(lines):
-        a = lines[0].split()
+        a = lines[-1].split()
         bytes = int(a[0])
         if PLATFORM == 'Darwin':
             sec = float(a[4])
