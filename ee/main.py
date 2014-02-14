@@ -12,6 +12,8 @@ import platform
 import time
 import signal
 import sys
+import fcntl
+import select
 
 DEFAULT_BS = 512
 BS_UNITS = {'b': 512, 'k': 1024, 'm': 1048576, 'g': 1073741824}
@@ -99,9 +101,11 @@ def calc_insize(args, bs):
 
 def do_dd(args, bs, insize):
     term = blessings.Terminal()
+    interrupted = False
 
     # start the dd process
     p = subprocess.Popen(['dd'] + args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    fcntl.fcntl(p.stderr.fileno(), fcntl.F_SETFL, os.O_NONBLOCK)
     time.sleep(START_DELAY)
 
     # wait for it to exit
@@ -111,43 +115,51 @@ def do_dd(args, bs, insize):
             sig = signal.SIGINFO if PLATFORM == "Darwin" else signal.SIGUSR1
             p.send_signal(sig)
 
-            # read and parse the status info
-            (rec_in, rec_out, bytes_tx) = read_status(p.stderr)
-            (bytes, sec, rate) = parse_status(bytes_tx)
+            # wait for output from dd
+            r,w,e = select.select([p.stderr], [], [])
 
-            # print status
-            print(term.clear_eol + fmt_line(bytes, sec, rate, insize) + term.move_up)
+            try:
+                # read and parse the status info
+                (bytes, sec, rate) = read_status(p.stderr)
+
+                # print status
+                print(term.clear_eol + fmt_line(bytes, sec, rate, insize) + term.move_up)
+            except KeyboardInterrupt:
+                raise
+            except:
+                pass
 
             # sleep
             time.sleep(SLEEP_DELAY)
     except KeyboardInterrupt:
         # relay the SIGINT to dd
         p.send_signal(signal.SIGINT)
+        interrupted = True
 
-    if p.returncode == 0:
+    if p.returncode == 0 or interrupted:
         # print final status
-        (rec_in, rec_out, bytes_tx) = read_status(p.stderr)
-        (bytes, sec, rate) = parse_status(bytes_tx)
+        r,w,e = select.select([p.stderr], [], [])
+        (bytes, sec, rate) = read_status(p.stderr)
         print(term.clear_eol + fmt_line(bytes, sec, rate, insize))
     else:
         # print error output from dd
         sys.stderr.write(p.stderr.read())
 
 def read_status(pipe):
-    rec_in = pipe.readline().strip()
-    rec_out = pipe.readline().strip()
-    bytes_tx = pipe.readline().strip()
-    return (rec_in, rec_out, bytes_tx)
-
-def parse_status(bytes_tx):
-    a = bytes_tx.split()
-    bytes = int(a[0])
-    if PLATFORM == 'Darwin':
-        sec = float(a[4])
-        rate = int(a[6][1:])
+    data = pipe.read()
+    lines = filter(lambda x: 'bytes' in x, data.splitlines())
+    if len(lines):
+        a = lines[0].split()
+        bytes = int(a[0])
+        if PLATFORM == 'Darwin':
+            sec = float(a[4])
+            rate = int(a[6][1:])
+        else:
+            sec = float(a[5])
+            rate = float(a[7])*pow(1024, UNITS_OLD.index(a[8][:-2].upper()))
     else:
-        sec = float(a[5])
-        rate = float(a[7])*pow(1024, UNITS_OLD.index(a[8][:-2].upper()))
+        raise Exception('Invalid data')
+
     return (bytes, sec, rate)
 
 def fmt_b(bytes):
