@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name = "ee",
-    version = "0.1",
+    version = "0.2",
     author = "snare",
     author_email = "snare@ho.ax",
     description = ("A wrapper for dd"),
