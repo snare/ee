@@ -32,7 +32,7 @@ Or:
 Todo
 ----
 
-* Proper Linux support (check mounts or something rather than `diskutil`)
+* Proper Linux support (check mounts or something like the usage of `diskutil` on OS X)
 
 Disclaimer
 ----------
