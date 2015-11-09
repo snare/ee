@@ -2,7 +2,7 @@ from __future__ import print_function
 
 import subprocess
 import sys
-import blessings
+import blessed
 import re
 import os
 import stat
@@ -14,6 +14,7 @@ import signal
 import sys
 import fcntl
 import select
+
 
 DEFAULT_BS = 512
 BS_UNITS = {'b': 512, 'k': 1024, 'm': 1048576, 'g': 1073741824}
@@ -28,11 +29,12 @@ SIZE_FMT = "{0:0.2f}{1}"
 
 PLATFORM = platform.system()
 
+
 def calc_bs(args):
     # find the bs= arg
     bs_arg = None
     args = filter(lambda x: x.startswith('bs='), args)
-    if len(args) > 0:        
+    if len(args) > 0:
         a = args[0].split('=')
         if len(a) > 0:
             bs_arg = a[1]
@@ -60,6 +62,7 @@ def calc_bs(args):
         bs = DEFAULT_BS
 
     return bs
+
 
 def calc_insize(args, bs):
     insize = 0
@@ -99,8 +102,8 @@ def calc_insize(args, bs):
 
     return insize
 
-def do_dd(args, bs, insize):
-    term = blessings.Terminal()
+
+def do_dd(args, bs, insize, term):
     interrupted = False
 
     # start the dd process
@@ -145,6 +148,7 @@ def do_dd(args, bs, insize):
         # print error output from dd
         sys.stderr.write(p.stderr.read())
 
+
 def read_status(pipe):
     data = pipe.read()
     lines = filter(lambda x: re.match("^\d+ bytes", x), data.splitlines())
@@ -161,6 +165,7 @@ def read_status(pipe):
         raise Exception('Invalid data')
 
     return (bytes, sec, rate)
+
 
 def fmt_b(bytes):
     base = 1024
@@ -181,12 +186,14 @@ def fmt_b(bytes):
 
     return fmt
 
+
 def fmt_line(bytes, sec, rate, insize):
     if insize != 0:
         output = TEMPL1.format(fmt_b(bytes), fmt_b(insize), float(bytes)/insize*100, sec, fmt_b(rate))
     else:
         output = TEMPL2.format(fmt_b(bytes), sec, fmt_b(rate))
     return output
+
 
 def main():
     args = sys.argv[1:]
@@ -198,7 +205,9 @@ def main():
     insize = calc_insize(args, bs)
 
     # run dd
-    do_dd(args, bs, insize)
+    term = blessed.Terminal()
+    with term.hidden_cursor():
+        do_dd(args, bs, insize, term)
 
 
 if __name__ == "__main__":
