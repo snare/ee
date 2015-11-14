@@ -14,7 +14,7 @@ import signal
 import sys
 import fcntl
 import select
-
+import math
 
 DEFAULT_BS = 512
 BS_UNITS = {'b': 512, 'k': 1024, 'm': 1048576, 'g': 1073741824}
@@ -174,13 +174,9 @@ def fmt_b(bytes):
     else:
         units = UNITS_OLD
 
-    # find power (i suck at math)
-    power = 1
-    while bytes > pow(base, power):
-        power += 1
-    if power > 0:
-        power -= 1
-
+    # find power (math is easy ;)
+    power = math.log(bytes, base) #get power
+    power = int(math.ceil(power)) #round up to next int
     # format
     fmt = SIZE_FMT.format(float(bytes)/pow(base, power), units[power])
 
