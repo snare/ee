@@ -51,7 +51,7 @@ def calc_bs(args):
         if 'x' in bs_arg:
             bs = 1
             for i in bs_arg.split('x'):
-                 bs *= int(i)
+                bs *= int(i)
         else:
             bs = int(bs_arg)
 
@@ -97,8 +97,17 @@ def calc_insize(args, bs):
                         # diskutil returned an error - infile probably doesn't exist. whatever, dd will error.
                         pass
                 elif PLATFORM == "Linux":
-                    # should probably figure out a decent way to do this on linux
-                    pass
+                    # this will only work if we're root, but we probably are if we're reading a raw device
+                    # node. if not, the disk just won't appear in the output
+                    try:
+                        path = os.path.abspath(infile)
+                        with open(os.devnull, 'w') as devnull:
+                            output = subprocess.check_output(["fdisk", path, "-l"], stderr=devnull)
+                        m = re.search('Disk {}: .*, (\d+) bytes'.format(path), output)
+                        if m:
+                            insize = int(m.group(1))
+                    except:
+                        pass
 
     return insize
 
@@ -174,10 +183,12 @@ def fmt_b(bytes):
     else:
         units = UNITS_OLD
 
-    # find power (math is easy ;)
-    power = math.log(bytes, base) #get power
-    power = int(math.ceil(power)) #round up to next int
-    # format
+    if bytes:
+        power = math.log(bytes, base)
+        power = int(math.floor(power))
+    else:
+        power = 1
+
     fmt = SIZE_FMT.format(float(bytes)/pow(base, power), units[power])
 
     return fmt
