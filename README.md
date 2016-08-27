@@ -17,7 +17,7 @@ Usage
 
 All arguments are passed directly to `dd`. `ee` spawns a `dd` process with the arguments and then monitors it with `SIGINFO` (on OS X, or `SIGUSR1` on Linux). Output reflects the amount of data copied.
 
-If the input size can easily be determined, output will reflect the amount of data copied relative to the source size. Currently only regular files and disk device nodes that appear in `diskutil` are reported upon in this manner.
+If the input size can easily be determined, output will reflect the amount of data copied relative to the source size. Currently only regular files and disk device nodes that appear in `diskutil` on macOS or `fdisk -l` on Linux are reported upon in this manner.
 
 Looks something like this while running:
 
@@ -28,11 +28,6 @@ Or:
 
     $ ee if=/dev/zero of=/dev/null
     2.74GB transferred in 5.44 seconds (515.36MB/sec)
-
-Todo
-----
-
-* Proper Linux support (check mounts or something like the usage of `diskutil` on OS X)
 
 Disclaimer
 ----------
